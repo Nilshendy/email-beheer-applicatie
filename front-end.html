@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Beheer Applicatie</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Bar -->
+        <header class="top-nav">
+            <div class="nav-left">
+                <i class="fas fa-envelope mail-icon"></i>
+            </div>
+            <div class="nav-center">
+                <div class="search-bar">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Zoek e-mails...">
+                </div>
+            </div>
+            <div class="nav-right">
+                <i class="fas fa-user user-profile"></i>
+            </div>
+        </header>
+
+        <!-- Secondary Navigation Bar -->
+        <nav class="secondary-nav">
+            <div class="nav-actions">
+                <button class="action-btn" title="Mail">
+                    <i class="fas fa-envelope"></i>
+                </button>
+                <button class="action-btn" title="Waarschuwing">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </button>
+                <button class="action-btn" title="Delen">
+                    <i class="fas fa-share"></i>
+                </button>
+                <button class="action-btn" title="Downloaden">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="action-btn" title="Vernieuwen">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button class="action-btn" title="Ster">
+                    <i class="fas fa-star"></i>
+                </button>
+                <button class="action-btn" title="Document">
+                    <i class="fas fa-file-alt"></i>
+                </button>
+                <button class="action-btn" title="Prullenbak">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Sidebar with Email List -->
+            <aside class="email-sidebar">
+                <div class="email-list" id="emailList">
+                    <!-- Email items will be dynamically inserted here -->
+                </div>
+            </aside>
+
+            <!-- Email Content Display -->
+            <main class="email-content">
+                <div class="content-header">
+                    <h2 id="emailSubject">Selecteer een e-mail</h2>
+                    <button class="star-btn" id="contentStarBtn">
+                        <i class="far fa-star"></i>
+                    </button>
+                </div>
+                <div class="content-body" id="emailContent">
+                    <p>De inhoud van de geselecteerde mail</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
