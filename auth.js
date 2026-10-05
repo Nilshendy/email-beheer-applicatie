@@ -2,8 +2,8 @@
 const users = JSON.parse(localStorage.getItem('users')) || [];
 
 // Check if we're on login or register page
-const isLoginPage = window.location.pathname.includes('login.html');
-const isRegisterPage = window.location.pathname.includes('register.html');
+const isLoginPage = window.location.pathname.includes('login.php');
+const isRegisterPage = window.location.pathname.includes('register.php');
 
 if (isLoginPage) {
     setupLoginForm();
@@ -19,13 +19,13 @@ function setupLoginForm() {
 
     // Toggle to register page
     loginToggle.addEventListener('click', () => {
-        window.location.href = 'register.html';
+        window.location.href = 'register.php';
     });
 
     // Register button goes to register page
     if (goToRegisterBtn) {
         goToRegisterBtn.addEventListener('click', () => {
-            window.location.href = 'register.html';
+            window.location.href = 'register.php';
         });
     }
 
@@ -62,13 +62,13 @@ function setupRegisterForm() {
 
     // Toggle to login page
     registerToggle.addEventListener('click', () => {
-        window.location.href = 'login.html';
+        window.location.href = 'login.php';
     });
 
     // Login button goes to login page
     loginBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        window.location.href = 'login.html';
+        window.location.href = 'login.php';
     });
 
     // Handle registration
@@ -85,7 +85,7 @@ function setupRegisterForm() {
 
         if (registerUser(email, password)) {
             showNotification('Registratie succesvol! U kunt nu inloggen.', 'success');
-            window.location.href = 'login.html';
+            window.location.href = 'login.php';
         } else {
             showNotification('Dit e-mailadres is al geregistreerd', 'error');
         }
@@ -147,7 +147,7 @@ function isLoggedIn() {
 // Logout user
 function logout() {
     localStorage.removeItem('currentUser');
-    window.location.href = 'login.html';
+    window.location.href = 'login.php';
 }
 
 // Get current user

@@ -21,8 +21,8 @@ Een eenvoudige e-mail beheer applicatie met een moderne interface voor het beher
 
 ```
 Email-beheer applicatie/
-├── login.html          # Login pagina
-├── register.html       # Registratie pagina
+├── login.php           # Login pagina
+├── register.php        # Registratie pagina
 ├── front-end.html      # Hoofd applicatie pagina
 ├── auth.css            # Styling voor auth pagina's
 ├── styles.css          # Styling voor de applicatie
@@ -44,7 +44,7 @@ Email-beheer applicatie/
 
 2. Open je browser en ga naar de **login pagina**:
    ```
-   http://localhost:8000/login.html
+   http://localhost:8000/login.php
    ```
 
 3. Registreer een nieuw account of log in met bestaande gegevens

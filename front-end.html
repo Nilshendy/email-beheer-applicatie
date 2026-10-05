@@ -93,6 +93,28 @@
         <div class="main-content">
             <!-- Sidebar with Email List -->
             <aside class="email-sidebar">
+                <!-- Folder Dropdown -->
+                <div class="folder-selector">
+                    <button class="folder-dropdown-btn" id="folderDropdownBtn">
+                        <i class="fas fa-folder"></i>
+                        <span id="currentFolderName">Postvak</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="folder-dropdown-menu" id="folderDropdownMenu">
+                        <div class="folder-item" data-folder="inbox">
+                            <i class="fas fa-inbox"></i>
+                            <span>Postvak</span>
+                        </div>
+                        <div class="folder-item" data-folder="sent">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Verzonden</span>
+                        </div>
+                        <div class="folder-item" data-folder="archived">
+                            <i class="fas fa-archive"></i>
+                            <span>Gearchiveerd</span>
+                        </div>
+                    </div>
+                </div>
                 <div class="email-list" id="emailList">
                     <!-- Email items will be dynamically inserted here -->
                 </div>

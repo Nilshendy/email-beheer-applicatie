@@ -9,7 +9,8 @@ const emails = [
         important: false,
         archived: false,
         hasAttachments: false,
-        attachments: []
+        attachments: [],
+        folder: "inbox"
     },
     {
         id: 2,
@@ -20,7 +21,8 @@ const emails = [
         important: true,
         archived: false,
         hasAttachments: true,
-        attachments: ["project_rapport.pdf", "schema.xlsx"]
+        attachments: ["project_rapport.pdf", "schema.xlsx"],
+        folder: "inbox"
     },
     {
         id: 3,
@@ -31,7 +33,8 @@ const emails = [
         important: true,
         archived: false,
         hasAttachments: true,
-        attachments: ["agenda.docx"]
+        attachments: ["agenda.docx"],
+        folder: "inbox"
     },
     {
         id: 4,
@@ -42,7 +45,8 @@ const emails = [
         important: false,
         archived: false,
         hasAttachments: false,
-        attachments: []
+        attachments: [],
+        folder: "inbox"
     },
     {
         id: 5,
@@ -53,18 +57,56 @@ const emails = [
         important: true,
         archived: false,
         hasAttachments: true,
-        attachments: ["factuur_september.pdf"]
+        attachments: ["factuur_september.pdf"],
+        folder: "inbox"
+    },
+    {
+        id: 6,
+        subject: "Antwoord op project update",
+        from: "Ik",
+        content: "Bedankt voor de update. Het ziet er goed uit!",
+        starred: false,
+        important: false,
+        archived: false,
+        hasAttachments: false,
+        attachments: [],
+        folder: "sent"
+    },
+    {
+        id: 7,
+        subject: "Vergadering bevestiging",
+        from: "Ik",
+        content: "Ik zal er zijn bij de vergadering morgen.",
+        starred: false,
+        important: false,
+        archived: false,
+        hasAttachments: false,
+        attachments: [],
+        folder: "sent"
+    },
+    {
+        id: 8,
+        subject: "Oude project documentatie",
+        from: "Archief",
+        content: "Dit is oude documentatie die is gearchiveerd.",
+        starred: false,
+        important: false,
+        archived: true,
+        hasAttachments: true,
+        attachments: ["oud_document.pdf"],
+        folder: "archived"
     }
 ];
 
 let currentEmail = null;
 let currentFilter = 'all'; // all, important, starred, archived
+let currentFolder = 'inbox'; // inbox, sent, archived
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is logged in
     if (!isLoggedIn()) {
-        window.location.href = 'login.html';
+        window.location.href = 'login.php';
         return;
     }
 
@@ -79,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupLogout();
     setupDarkMode();
     setupProfileDropdown();
+    setupFolderDropdown();
 });
 
 // Render the email list in the sidebar
@@ -86,10 +129,13 @@ function renderEmailList(filter = '') {
     const emailList = document.getElementById('emailList');
     emailList.innerHTML = '';
 
-    let filteredEmails = emails.filter(email => 
+    let filteredEmails = emails.filter(email =>
         email.subject.toLowerCase().includes(filter.toLowerCase()) ||
         email.from.toLowerCase().includes(filter.toLowerCase())
     );
+
+    // Apply folder filter
+    filteredEmails = filteredEmails.filter(email => email.folder === currentFolder);
 
     // Apply category filter
     if (currentFilter === 'important') {
@@ -151,7 +197,7 @@ function selectEmail(email) {
     document.getElementById('emailContent').innerHTML = `
         <p><strong>Van:</strong> ${email.from}</p>
         <p><strong>Onderwerp:</strong> ${email.subject}</p>
-        <p><strong>Status:</strong> ${email.starred ? '⭐ Gemarkeerd' : ''} ${email.important ? '⚠️ Belangrijk' : ''} ${email.archived ? '📁 Gearchiveerd' : ''}</p>
+        <p><strong>Status:</strong> ${email.starred ? 'Gemarkeerd' : ''} ${email.important ? 'Belangrijk' : ''} ${email.archived ? 'Gearchiveerd' : ''}</p>
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #B9B9B9;">
         <p>${email.content}</p>
         ${attachmentsHtml}
@@ -248,11 +294,12 @@ function createNewEmail() {
                 important: false,
                 archived: false,
                 hasAttachments: false,
-                attachments: []
+                attachments: [],
+                folder: "sent"
             };
             emails.unshift(newEmail); // Add to beginning of list
             renderEmailList(document.getElementById('searchInput').value);
-            showNotification('Nieuwe e-mail aangemaakt!', 'success');
+            showNotification('Nieuwe e-mail aangemaakt en verzonden!', 'success');
         }
     }
 }
@@ -321,6 +368,15 @@ function archiveEmail() {
     }
 
     currentEmail.archived = !currentEmail.archived;
+
+    // Move to archived folder if being archived
+    if (currentEmail.archived) {
+        currentEmail.folder = 'archived';
+    } else {
+        // Move back to inbox if being unarchived
+        currentEmail.folder = 'inbox';
+    }
+
     const status = currentEmail.archived ? 'gearchiveerd' : 'gedearchiveerd';
     showNotification(`E-mail is ${status}`, 'info');
 
@@ -365,7 +421,7 @@ function isLoggedIn() {
 
 function logout() {
     localStorage.removeItem('currentUser');
-    window.location.href = 'login.html';
+    window.location.href = 'login.php';
 }
 
 function getCurrentUser() {
@@ -486,4 +542,68 @@ function showNotification(message, type = 'info') {
             }
         }, 300);
     }, 3000);
+}
+
+// Setup folder dropdown
+function setupFolderDropdown() {
+    const folderDropdownBtn = document.getElementById('folderDropdownBtn');
+    const folderDropdownMenu = document.getElementById('folderDropdownMenu');
+    const folderItems = document.querySelectorAll('.folder-item');
+    const currentFolderName = document.getElementById('currentFolderName');
+
+    // Toggle dropdown
+    if (folderDropdownBtn && folderDropdownMenu) {
+        folderDropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            folderDropdownBtn.classList.toggle('active');
+            folderDropdownMenu.classList.toggle('active');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!folderDropdownBtn.contains(e.target) && !folderDropdownMenu.contains(e.target)) {
+                folderDropdownBtn.classList.remove('active');
+                folderDropdownMenu.classList.remove('active');
+            }
+        });
+    }
+
+    // Handle folder selection
+    folderItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const folder = item.dataset.folder;
+            currentFolder = folder;
+
+            // Update active state
+            folderItems.forEach(fi => fi.classList.remove('active'));
+            item.classList.add('active');
+
+            // Update button text
+            const folderNames = {
+                'inbox': 'Postvak',
+                'sent': 'Verzonden',
+                'archived': 'Gearchiveerd'
+            };
+            if (currentFolderName) {
+                currentFolderName.textContent = folderNames[folder];
+            }
+
+            // Close dropdown
+            folderDropdownBtn.classList.remove('active');
+            folderDropdownMenu.classList.remove('active');
+
+            // Reset filter and refresh list
+            currentFilter = 'all';
+            renderEmailList(document.getElementById('searchInput').value);
+
+            // Show notification
+            showNotification(`Overgeschakeld naar ${folderNames[folder]}`, 'info');
+        });
+    });
+
+    // Set initial active state
+    const initialFolderItem = document.querySelector('.folder-item[data-folder="inbox"]');
+    if (initialFolderItem) {
+        initialFolderItem.classList.add('active');
+    }
 }
