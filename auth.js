@@ -1,89 +1,27 @@
-// Authentication functionality
-const users = JSON.parse(localStorage.getItem('users')) || [];
-
-// Check if we're on login or register page
-const isLoginPage = window.location.pathname.includes('login.php');
-const isRegisterPage = window.location.pathname.includes('register.php');
-
-if (isLoginPage) {
-    setupLoginForm();
-} else if (isRegisterPage) {
-    setupRegisterForm();
-}
-
-// Setup login form
-function setupLoginForm() {
-    const loginForm = document.getElementById('loginForm');
-    const loginToggle = document.querySelector('.login-toggle');
-    const goToRegisterBtn = document.getElementById('goToRegister');
-
-    // Toggle to register page
-    loginToggle.addEventListener('click', () => {
-        window.location.href = 'register.php';
-    });
-
-    // Register button goes to register page
-    if (goToRegisterBtn) {
-        goToRegisterBtn.addEventListener('click', () => {
-            window.location.href = 'register.php';
-        });
-    }
-
-    // Handle login
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-
-        console.log('Login attempt:', email); // Debug log
-
-        if (loginUser(email, password)) {
-            showNotification('Succesvol ingelogd!', 'success');
-            console.log('Login successful, redirecting to front-end.html'); // Debug log
-            window.location.href = 'front-end.html';
-        } else {
-            showNotification('Ongeldige e-mail of wachtwoord', 'error');
-            console.log('Login failed'); // Debug log
-        }
-    });
-
-    // Forgot password (placeholder)
-    document.querySelector('.forgot-password').addEventListener('click', (e) => {
-        e.preventDefault();
-        showNotification('Wachtwoord reset functionaliteit komt soon (placeholder)', 'info');
-    });
-}
-
 // Setup register form
 function setupRegisterForm() {
     const registerForm = document.getElementById('registerForm');
-    const registerToggle = document.querySelector('.login-toggle');
-    const loginBtn = document.querySelector('.login-btn');
-
-    // Toggle to login page
-    registerToggle.addEventListener('click', () => {
-        window.location.href = 'login.php';
-    });
-
-    // Login button goes to login page
-    loginBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.location.href = 'login.php';
-    });
 
     // Handle registration
-    registerForm.addEventListener('submit', (e) => {
+    registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('reg-email').value;
         const password = document.getElementById('reg-password').value;
         const confirmPassword = document.getElementById('reg-confirm-password').value;
+
+        // Basic validation
+        if (password.length < 6) {
+            showNotification('Wachtwoord moet minimaal 6 tekens zijn', 'error');
+            return;
+        }
 
         if (password !== confirmPassword) {
             showNotification('Wachtwoorden komen niet overeen', 'error');
             return;
         }
 
-        if (registerUser(email, password)) {
+        const success = await registerUser(email, password);
+        if (success) {
             showNotification('Registratie succesvol! U kunt nu inloggen.', 'success');
             window.location.href = 'login.php';
         } else {
@@ -92,51 +30,54 @@ function setupRegisterForm() {
     });
 }
 
-// Login user
-function loginUser(email, password) {
-    console.log('Attempting login with:', email);
-    console.log('Current users in storage:', users);
+// Login user with database API
+async function loginUser(email, password) {
+    try {
+        const response = await fetch('api_login.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+        });
 
-    const user = users.find(u => u.email === email && u.password === password);
-
-    if (user) {
-        console.log('User found:', user);
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        return true;
-    } else {
-        console.log('User not found or password incorrect');
-        // Check if email exists
-        const emailExists = users.find(u => u.email === email);
-        if (emailExists) {
-            console.log('Email exists but password is wrong');
-        } else {
-            console.log('Email does not exist in database');
+        if (!response.ok) {
+            return false;
         }
+
+        const data = await response.json();
+
+        if (data.success) {
+            localStorage.setItem('currentUser', JSON.stringify(data.user));
+            return true;
+        } else {
+            return false;
+        }
+    } catch (error) {
         return false;
     }
 }
 
-// Register new user
-function registerUser(email, password) {
-    console.log('Registration attempt:', email); // Debug log
+// Register new user with database API
+async function registerUser(email, password) {
+    try {
+        const response = await fetch('api_register.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+        });
 
-    // Check if user already exists
-    if (users.find(u => u.email === email)) {
-        console.log('User already exists'); // Debug log
+        if (!response.ok) {
+            return false;
+        }
+
+        const data = await response.json();
+        return data.success;
+    } catch (error) {
         return false;
     }
-
-    const newUser = {
-        id: Date.now(),
-        email: email,
-        password: password,
-        createdAt: new Date().toISOString()
-    };
-
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-    console.log('User registered successfully'); // Debug log
-    return true;
 }
 
 // Check if user is logged in
@@ -176,3 +117,8 @@ function showNotification(message, type = 'info') {
         }, 300);
     }, 3000);
 }
+
+// Initialize on DOM load
+document.addEventListener('DOMContentLoaded', function() {
+    setupRegisterForm();
+});

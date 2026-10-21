@@ -104,12 +104,6 @@ let currentFolder = 'inbox'; // inbox, sent, archived
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is logged in
-    if (!isLoggedIn()) {
-        window.location.href = 'login.php';
-        return;
-    }
-
     // Load dark mode preference
     loadDarkModePreference();
 
@@ -122,6 +116,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupDarkMode();
     setupProfileDropdown();
     setupFolderDropdown();
+    setupNewEmailModal();
+    setupSettingsModal();
 });
 
 // Render the email list in the sidebar
@@ -281,26 +277,13 @@ function toggleStarFromToolbar() {
 
 // Create new email
 function createNewEmail() {
-    const subject = prompt('Onderwerp van de nieuwe e-mail:');
-    if (subject) {
-        const content = prompt('Inhoud van de e-mail:');
-        if (content) {
-            const newEmail = {
-                id: emails.length + 1,
-                subject: subject,
-                from: "Ik",
-                content: content,
-                starred: false,
-                important: false,
-                archived: false,
-                hasAttachments: false,
-                attachments: [],
-                folder: "sent"
-            };
-            emails.unshift(newEmail); // Add to beginning of list
-            renderEmailList(document.getElementById('searchInput').value);
-            showNotification('Nieuwe e-mail aangemaakt en verzonden!', 'success');
-        }
+    const modal = document.getElementById('newEmailModal');
+    if (modal) {
+        modal.classList.add('active');
+        // Reset form
+        document.getElementById('newEmailForm').reset();
+        // Focus on first input
+        document.getElementById('emailTo').focus();
     }
 }
 
@@ -323,10 +306,7 @@ function forwardEmail() {
         return;
     }
 
-    const recipient = prompt('Naar wie wilt u deze e-mail doorsturen?');
-    if (recipient) {
-        showNotification(`E-mail wordt doorgestuurd naar: ${recipient}`, 'success');
-    }
+    showNotification('Doorsturen functionaliteit komt binnenkort', 'info');
 }
 
 // Download attachments
@@ -391,21 +371,18 @@ function deleteEmail() {
         return;
     }
 
-    const confirmDelete = confirm(`Weet u zeker dat u "${currentEmail.subject}" wilt verwijderen?`);
-    if (confirmDelete) {
-        const index = emails.findIndex(e => e.id === currentEmail.id);
-        if (index > -1) {
-            emails.splice(index, 1);
-            currentEmail = null;
+    const index = emails.findIndex(e => e.id === currentEmail.id);
+    if (index > -1) {
+        emails.splice(index, 1);
+        currentEmail = null;
 
-            // Reset content display
-            document.getElementById('emailSubject').textContent = 'Selecteer een e-mail';
-            document.getElementById('emailContent').innerHTML = '<p>De inhoud van de geselecteerde mail</p>';
+        // Reset content display
+        document.getElementById('emailSubject').textContent = 'Selecteer een e-mail';
+        document.getElementById('emailContent').innerHTML = '<p>De inhoud van de geselecteerde mail</p>';
 
-            // Refresh the list
-            renderEmailList(document.getElementById('searchInput').value);
-            showNotification('E-mail verwijderd', 'success');
-        }
+        // Refresh the list
+        renderEmailList(document.getElementById('searchInput').value);
+        showNotification('E-mail verwijderd', 'success');
     }
 }
 
@@ -416,16 +393,18 @@ function setupLogout() {
 
 // Authentication helper functions
 function isLoggedIn() {
-    return localStorage.getItem('currentUser') !== null;
+    // Check PHP session by making a request
+    return true; // PHP session check is done server-side
 }
 
 function logout() {
-    localStorage.removeItem('currentUser');
-    window.location.href = 'login.php';
+    window.location.href = 'logout.php';
 }
 
 function getCurrentUser() {
-    return JSON.parse(localStorage.getItem('currentUser'));
+    // Return email from PHP session
+    const userEmailElement = document.getElementById('userEmail');
+    return userEmailElement ? { email: userEmailElement.textContent } : null;
 }
 
 // Dark Mode functionality
@@ -499,9 +478,7 @@ function setupProfileDropdown() {
     if (logoutItem) {
         logoutItem.addEventListener('click', (e) => {
             e.preventDefault();
-            if (confirm('Weet u zeker dat u wilt uitloggen?')) {
-                logout();
-            }
+            logout();
         });
     }
 
@@ -606,4 +583,212 @@ function setupFolderDropdown() {
     if (initialFolderItem) {
         initialFolderItem.classList.add('active');
     }
+}
+
+// Setup new email modal
+function setupNewEmailModal() {
+    const modal = document.getElementById('newEmailModal');
+    const closeModalBtn = document.getElementById('closeModal');
+    const cancelBtn = document.getElementById('cancelEmail');
+    const emailForm = document.getElementById('newEmailForm');
+
+    // Close modal when clicking X button
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+    }
+
+    // Close modal when clicking cancel button
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+    }
+
+    // Close modal when clicking outside
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    }
+
+    // Handle form submission
+    if (emailForm) {
+        emailForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const to = document.getElementById('emailTo').value;
+            const subject = document.getElementById('emailSubject').value;
+            const content = document.getElementById('emailContent').value;
+
+            // Get user's SMTP credentials from storage
+            const userEmail = localStorage.getItem('user_smtp_email');
+            const userPassword = localStorage.getItem('user_smtp_password');
+            const smtpServer = localStorage.getItem('user_smtp_server') || 'smtp.gmail.com';
+            const smtpPort = localStorage.getItem('user_smtp_port') || '465';
+
+            if (!userEmail || !userPassword) {
+                showNotification('Stel eerst je email instellingen in bij Instellingen', 'warning');
+                modal.classList.remove('active');
+                return;
+            }
+
+            // Send to Python email server
+            try {
+                const response = await fetch('http://localhost:5001', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        email: userEmail,
+                        password: userPassword,
+                        receiver: to,
+                        subject: subject,
+                        message: content,
+                        smtp_server: smtpServer,
+                        smtp_port: smtpPort
+                    })
+                });
+
+                const text = await response.text();
+
+                if (text.includes('Email succesvol verzonden')) {
+                    // Add to local list
+                    const newEmail = {
+                        id: emails.length + 1,
+                        subject: subject,
+                        from: userEmail,
+                        to: to,
+                        content: content,
+                        starred: false,
+                        important: false,
+                        archived: false,
+                        hasAttachments: false,
+                        attachments: [],
+                        folder: "sent"
+                    };
+
+                    emails.unshift(newEmail);
+                    modal.classList.remove('active');
+                    showNotification('E-mail verzonden naar ' + to, 'success');
+
+                    // Switch to sent folder
+                    currentFolder = 'sent';
+                    currentFilter = 'all';
+                    const folderItems = document.querySelectorAll('.folder-item');
+                    folderItems.forEach(item => {
+                        item.classList.remove('active');
+                        if (item.dataset.folder === 'sent') {
+                            item.classList.add('active');
+                        }
+                    });
+                    document.getElementById('currentFolderName').textContent = 'Verzonden';
+
+                    renderEmailList(document.getElementById('searchInput').value);
+                } else {
+                    showNotification('Email verzenden mislukt - controleer je credentials in instellingen', 'error');
+                }
+            } catch (error) {
+                showNotification('Fout bij verzenden: ' + error, 'error');
+            }
+        });
+    }
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            modal.classList.remove('active');
+        }
+    });
+}
+
+// Setup settings modal
+function setupSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    const closeModalBtn = document.getElementById('closeSettingsModal');
+    const cancelBtn = document.getElementById('cancelSettings');
+    const settingsForm = document.getElementById('settingsForm');
+    const settingsItem = document.getElementById('settingsItem');
+
+    // Open modal when clicking settings
+    if (settingsItem) {
+        settingsItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Load existing settings
+            const user = getCurrentUser();
+            const savedEmail = localStorage.getItem('user_smtp_email');
+            const savedServer = localStorage.getItem('user_smtp_server');
+            const savedPort = localStorage.getItem('user_smtp_port');
+
+            if (user && user.email) {
+                document.getElementById('settingEmail').value = user.email;
+            }
+            if (savedEmail) {
+                document.getElementById('settingEmail').value = savedEmail;
+            }
+            if (savedServer) {
+                document.getElementById('settingSmtpServer').value = savedServer;
+            }
+            if (savedPort) {
+                document.getElementById('settingSmtpPort').value = savedPort;
+            }
+
+            modal.classList.add('active');
+        });
+    }
+
+    // Close modal when clicking X button
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+    }
+
+    // Close modal when clicking cancel button
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+    }
+
+    // Close modal when clicking outside
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    }
+
+    // Handle form submission
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('settingEmail').value;
+            const password = document.getElementById('settingPassword').value;
+            const smtpServer = document.getElementById('settingSmtpServer').value;
+            const smtpPort = document.getElementById('settingSmtpPort').value;
+
+            // Save to localStorage
+            localStorage.setItem('user_smtp_email', email);
+            localStorage.setItem('user_smtp_password', password);
+            localStorage.setItem('user_smtp_server', smtpServer);
+            localStorage.setItem('user_smtp_port', smtpPort);
+
+            modal.classList.remove('active');
+            showNotification('Email instellingen opgeslagen', 'success');
+        });
+    }
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            modal.classList.remove('active');
+        }
+    });
 }

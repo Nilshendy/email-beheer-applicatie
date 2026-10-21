@@ -1,45 +1,48 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inloggen - Email Beheer</title>
-    <link rel="stylesheet" href="auth.css">
+    <title>Inloggen - mailbase</title>
+    <link rel="stylesheet" href="login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="auth-container">
         <!-- Notification Container -->
-        <div class="notification-container" id="notificationContainer"></div>
+        <!-- <div class="notification-container" id="notificationContainer"></div> -->
 
         <div class="auth-box">
-            <button class="login-toggle">Log in</button>
             
-            <div class="auth-icon">
-                <i class="fas fa-envelope"></i>
-            </div>
-            
-            <form class="auth-form" id="loginForm">
+            <form class="auth-form" action="loginCM.php" method="post">
+
                 <div class="form-group">
-                    <label for="email">E-mail</label>
-                    <input type="email" id="email" name="email" required placeholder="voer uw e-mail in">
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Wachtwoord</label>
-                    <input type="password" id="password" name="password" required placeholder="voer uw wachtwoord in">
-                </div>
-                
-                <div class="form-actions">
-                    <a href="#" class="forgot-password">Wachtwoord vergeten?</a>
+
+                    <label>E-mail</label><br>
+                    <input type="email" id="email" name="Email" placeholder="voer uw e-mail in" required>
+
                 </div>
 
-                <button type="submit" class="auth-btn login-btn">Log in</button>
-                <button type="button" class="auth-btn register-btn" id="goToRegister">Registeren</button>
+                
+                <div class="form-group">
+
+                    <label>Wachtwoord</label><br>
+                    <input type="password" id="password" name="Password" placeholder="voer uw wachtwoord in" required >
+
+                </div>
+                
+                <!-- <div class="form-actions">
+
+                    <a href="#" class="forgot-password">Wachtwoord vergeten?</a>
+                
+                </div> -->
+
+                <button type="submit" class="auth-btn login-btn" name="login">Log in</button>
+
+                <div style="margin-top: 15px; text-align: center;">
+                    <a href="register.php" style="color: #0030FF; text-decoration: none;">Nog geen account? Registreren</a>
+                </div>
+
             </form>
         </div>
     </div>
-
-    <script src="auth.js"></script>
 </body>
 </html>

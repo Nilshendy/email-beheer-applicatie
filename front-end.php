@@ -1,3 +1,10 @@
+<?php
+session_start();
+if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
+    header('Location: login.php');
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -11,6 +18,74 @@
     <div class="app-container">
         <!-- Notification Container -->
         <div class="notification-container" id="notificationContainer"></div>
+
+        <!-- Settings Modal -->
+        <div class="modal" id="settingsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Email Instellingen</h2>
+                    <button class="modal-close" id="closeSettingsModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form class="email-form" id="settingsForm">
+                        <div class="form-group">
+                            <label for="settingEmail">Jouw Email:</label>
+                            <input type="email" id="settingEmail" name="email" required placeholder="your@nix.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="settingPassword">Wachtwoord:</label>
+                            <input type="password" id="settingPassword" name="password" required placeholder="Je wachtwoord">
+                        </div>
+                        <div class="form-group">
+                            <label for="settingSmtpServer">SMTP Server:</label>
+                            <input type="text" id="settingSmtpServer" name="smtp_server" placeholder="smtp.gmail.com" value="smtp.gmail.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="settingSmtpPort">SMTP Poort:</label>
+                            <input type="number" id="settingSmtpPort" name="smtp_port" placeholder="465" value="465">
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" id="cancelSettings">Annuleren</button>
+                            <button type="submit" class="btn btn-primary">Opslaan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Email Modal -->
+        <div class="modal" id="newEmailModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Nieuwe E-mail</h2>
+                    <button class="modal-close" id="closeModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form class="email-form" id="newEmailForm">
+                        <div class="form-group">
+                            <label for="emailTo">Aan:</label>
+                            <input type="email" id="emailTo" name="to" required placeholder="ontvanger@voorbeeld.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="emailSubject">Onderwerp:</label>
+                            <input type="text" id="emailSubject" name="subject" required placeholder="Onderwerp van de e-mail">
+                        </div>
+                        <div class="form-group">
+                            <label for="emailContent">Inhoud:</label>
+                            <textarea id="emailContent" name="content" required placeholder="Typ uw bericht hier..." rows="10"></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" id="cancelEmail">Annuleren</button>
+                            <button type="submit" class="btn btn-primary">Verzenden</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
         <!-- Top Navigation Bar -->
         <header class="top-nav">
