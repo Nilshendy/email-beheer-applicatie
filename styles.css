@@ -1001,3 +1001,8 @@ body.dark-mode .btn-secondary {
 body.dark-mode .btn-secondary:hover {
     background-color: #505050;
 }
+
+.settings-info {
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
