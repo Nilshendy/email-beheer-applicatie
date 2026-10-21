@@ -1,0 +1,11 @@
+# Geheimen
+.env
+*.env
+!*.env.example
+
+# Build- en cachebestanden
+__pycache__/
+*.pyc
+bin/
+obj/
+node_modules/
