@@ -16,6 +16,7 @@ Een eenvoudige e-mail beheer applicatie met een moderne interface voor het beher
 - **Bijlagen downloaden**: Download bijlagen van e-mails
 - **E-mail archiveren**: Archiveer e-mails voor later gebruik
 - **E-mail verwijderen**: Verwijder e-mails uit de lijst
+- **Folder navigatie**: Wissel tussen postvak, verzonden en gearchiveerde e-mails
 
 ## Bestandsstructuur
 
@@ -23,7 +24,7 @@ Een eenvoudige e-mail beheer applicatie met een moderne interface voor het beher
 Email-beheer applicatie/
 ├── login.php           # Login pagina
 ├── register.php        # Registratie pagina
-├── front-end.html      # Hoofd applicatie pagina
+├── front-end.php       # Hoofd applicatie pagina
 ├── auth.css            # Styling voor auth pagina's
 ├── styles.css          # Styling voor de applicatie
 ├── auth.js             # Authenticatie functionaliteit
@@ -37,9 +38,9 @@ Email-beheer applicatie/
 
 ## Hoe te gebruiken
 
-1. Start een lokale webserver in de projectmap:
+1. Start een lokale PHP webserver in de projectmap:
    ```bash
-   python -m http.server 8000
+   php -S localhost:8000
    ```
 
 2. Open je browser en ga naar de **login pagina**:
@@ -78,6 +79,7 @@ Email-beheer applicatie/
 
 ## Technologieën
 
+- PHP
 - HTML5
 - CSS3
 - Vanilla JavaScript

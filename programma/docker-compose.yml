@@ -1,0 +1,50 @@
+services:
+  web:
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./www:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: ./app
+    restart: unless-stopped
+    volumes:
+      - ./python:/app/python
+      - ./dotnet:/app/dotnet
+      - ./nodejs:/app/nodejs
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dbdata:
