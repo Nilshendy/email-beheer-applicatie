@@ -1,6 +1,6 @@
 <?php
 
-$db_server = "localhost";
+$db_server = getenv("DB_HOST") ?: "127.0.0.1"; // 127.0.0.1 zodat PHP via TCP (Docker poort) verbindt
 $db_port = "3307"; // Docker database port
 $db_user = getenv("DB_USER") ?: "mail";
 $db_pass = getenv("DB_PASSWORD") ?: "base";
@@ -60,6 +60,9 @@ try {
         )";
 
         mysqli_query($conn, $emails_sql);
+
+        // Voor bestaande databases: kolom voor verwijderde mails toevoegen
+        mysqli_query($conn, "ALTER TABLE emails ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT FALSE");
     }
 } catch (mysqli_sql_exception $e) {
     $status_conn = "Database connection failed: " . $e->getMessage();
