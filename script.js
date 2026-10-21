@@ -1,102 +1,5 @@
-// Sample email data with extended fields
-const emails = [
-    {
-        id: 1,
-        subject: "Welkom bij Email Beheer",
-        from: "Systeem",
-        content: "Welkom bij de Email Beheer applicatie. Dit is een voorbeeld e-mail om de functionaliteit te demonstreren.",
-        starred: false,
-        important: false,
-        archived: false,
-        hasAttachments: false,
-        attachments: [],
-        folder: "inbox"
-    },
-    {
-        id: 2,
-        subject: "Project update",
-        from: "Team",
-        content: "Hier is de laatste update over het project. We hebben goede voortgang geboekt en zijn op schema.",
-        starred: true,
-        important: true,
-        archived: false,
-        hasAttachments: true,
-        attachments: ["project_rapport.pdf", "schema.xlsx"],
-        folder: "inbox"
-    },
-    {
-        id: 3,
-        subject: "Vergadering morgen",
-        from: "Manager",
-        content: "Vergeet niet de vergadering morgen om 10:00 uur. We zullen de resultaten bespreken.",
-        starred: false,
-        important: true,
-        archived: false,
-        hasAttachments: true,
-        attachments: ["agenda.docx"],
-        folder: "inbox"
-    },
-    {
-        id: 4,
-        subject: "Nieuwe functies",
-        from: "Development",
-        content: "We hebben nieuwe functies toegevoegd aan de applicatie. Bekijk de documentatie voor meer informatie.",
-        starred: false,
-        important: false,
-        archived: false,
-        hasAttachments: false,
-        attachments: [],
-        folder: "inbox"
-    },
-    {
-        id: 5,
-        subject: "Factuur ontvangen",
-        from: "Financiën",
-        content: "Uw factuur voor deze maand is beschikbaar. Log in op het portaal om te betalen.",
-        starred: false,
-        important: true,
-        archived: false,
-        hasAttachments: true,
-        attachments: ["factuur_september.pdf"],
-        folder: "inbox"
-    },
-    {
-        id: 6,
-        subject: "Antwoord op project update",
-        from: "Ik",
-        content: "Bedankt voor de update. Het ziet er goed uit!",
-        starred: false,
-        important: false,
-        archived: false,
-        hasAttachments: false,
-        attachments: [],
-        folder: "sent"
-    },
-    {
-        id: 7,
-        subject: "Vergadering bevestiging",
-        from: "Ik",
-        content: "Ik zal er zijn bij de vergadering morgen.",
-        starred: false,
-        important: false,
-        archived: false,
-        hasAttachments: false,
-        attachments: [],
-        folder: "sent"
-    },
-    {
-        id: 8,
-        subject: "Oude project documentatie",
-        from: "Archief",
-        content: "Dit is oude documentatie die is gearchiveerd.",
-        starred: false,
-        important: false,
-        archived: true,
-        hasAttachments: true,
-        attachments: ["oud_document.pdf"],
-        folder: "archived"
-    }
-];
+// E-mails van de ingelogde gebruiker (geladen via api_emails.php)
+let emails = [];
 
 let currentEmail = null;
 let currentFilter = 'all'; // all, important, starred, archived
@@ -118,16 +21,91 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFolderDropdown();
     setupNewEmailModal();
     setupSettingsModal();
+
+    loadEmails().then(() => syncEmails(true));
 });
+
+// Escape tekst voordat het in innerHTML komt (mails kunnen HTML/scripts bevatten)
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML;
+}
+
+async function postJson(url, body) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+    if (response.status === 401) {
+        window.location.href = 'login.php';
+    }
+    return response.json();
+}
+
+// Mails van de ingelogde gebruiker uit de database laden
+async function loadEmails() {
+    try {
+        const response = await fetch('api_emails.php');
+        if (response.status === 401) {
+            window.location.href = 'login.php';
+            return;
+        }
+        const data = await response.json();
+        if (data.success) {
+            emails = data.emails;
+            if (currentEmail) {
+                currentEmail = emails.find(e => e.id === currentEmail.id) || null;
+            }
+            renderEmailList(document.getElementById('searchInput').value);
+        } else {
+            showNotification(data.message || 'E-mails laden mislukt', 'error');
+        }
+    } catch (error) {
+        showNotification('E-mails laden mislukt', 'error');
+    }
+}
+
+// Nieuwe mails uit Gmail ophalen (IMAP) en daarna de lijst herladen
+async function syncEmails(silent = false) {
+    try {
+        const data = await postJson('api_sync.php');
+        if (data.success) {
+            if (data.fetched > 0) {
+                await loadEmails();
+            }
+            if (!silent || data.fetched > 0) {
+                showNotification(data.fetched > 0 ? `${data.fetched} nieuwe e-mail(s)` : 'Geen nieuwe e-mails', 'success');
+            }
+        } else if (!(silent && data.no_credentials)) {
+            showNotification(data.message || 'Mails ophalen mislukt', silent ? 'warning' : 'error');
+        }
+        return data;
+    } catch (error) {
+        if (!silent) showNotification('Mails ophalen mislukt', 'error');
+        return { success: false };
+    }
+}
+
+async function emailAction(email, action) {
+    const data = await postJson('api_emails.php', { email_id: email.id, action: action });
+    if (!data.success) {
+        showNotification(data.message || 'Actie mislukt', 'error');
+    }
+    return data.success;
+}
 
 // Render the email list in the sidebar
 function renderEmailList(filter = '') {
     const emailList = document.getElementById('emailList');
     emailList.innerHTML = '';
 
+    const search = filter.toLowerCase();
     let filteredEmails = emails.filter(email =>
-        email.subject.toLowerCase().includes(filter.toLowerCase()) ||
-        email.from.toLowerCase().includes(filter.toLowerCase())
+        (email.subject || '').toLowerCase().includes(search) ||
+        (email.from || '').toLowerCase().includes(search) ||
+        (email.from_email || '').toLowerCase().includes(search)
     );
 
     // Apply folder filter
@@ -140,6 +118,10 @@ function renderEmailList(filter = '') {
         filteredEmails = filteredEmails.filter(email => email.starred);
     } else if (currentFilter === 'archived') {
         filteredEmails = filteredEmails.filter(email => email.archived);
+    }
+
+    if (filteredEmails.length === 0) {
+        emailList.innerHTML = '<p class="email-empty" style="padding: 16px 20px; color: #888;">Geen e-mails</p>';
     }
 
     filteredEmails.forEach(email => {
@@ -155,7 +137,7 @@ function renderEmailList(filter = '') {
 
         emailItem.innerHTML = `
             <i class="fas fa-key email-key"></i>
-            <span class="email-label">Mail ${email.id}</span>
+            <span class="email-label" title="${escapeHtml(email.from)}">${escapeHtml(email.subject || '(geen onderwerp)')}</span>
             <div class="email-icons">${iconsHtml}</div>
         `;
 
@@ -177,7 +159,10 @@ function selectEmail(email) {
     });
 
     // Update content display
-    document.getElementById('emailSubject').textContent = email.subject;
+    document.getElementById('emailSubject').textContent = email.subject || '(geen onderwerp)';
+    const fromText = email.from_email && email.from_email !== email.from
+        ? `${email.from} <${email.from_email}>`
+        : (email.from || email.from_email || '');
 
     // Build attachments HTML if any
     let attachmentsHtml = '';
@@ -185,17 +170,18 @@ function selectEmail(email) {
         attachmentsHtml = '<div class="attachments-container">';
         attachmentsHtml += '<strong>Bijlagen:</strong><ul class="attachments-list">';
         email.attachments.forEach(att => {
-            attachmentsHtml += `<li class="attachment-item"><i class="fas fa-paperclip"></i> ${att}</li>`;
+            attachmentsHtml += `<li class="attachment-item"><i class="fas fa-paperclip"></i> ${escapeHtml(att)}</li>`;
         });
         attachmentsHtml += '</ul></div>';
     }
 
     document.getElementById('emailContent').innerHTML = `
-        <p><strong>Van:</strong> ${email.from}</p>
-        <p><strong>Onderwerp:</strong> ${email.subject}</p>
+        <p><strong>Van:</strong> ${escapeHtml(fromText)}</p>
+        <p><strong>Datum:</strong> ${escapeHtml(email.received_date)}</p>
+        <p><strong>Onderwerp:</strong> ${escapeHtml(email.subject)}</p>
         <p><strong>Status:</strong> ${email.starred ? 'Gemarkeerd' : ''} ${email.important ? 'Belangrijk' : ''} ${email.archived ? 'Gearchiveerd' : ''}</p>
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #B9B9B9;">
-        <p>${email.content}</p>
+        <div class="email-body" style="white-space: pre-wrap; word-break: break-word;">${escapeHtml(email.content)}</div>
         ${attachmentsHtml}
     `;
 
@@ -248,9 +234,10 @@ function setupEventListeners() {
 }
 
 // Toggle star status for current email (from content area)
-function toggleStar() {
+async function toggleStar() {
     if (!currentEmail) return;
 
+    if (!(await emailAction(currentEmail, 'star'))) return;
     currentEmail.starred = !currentEmail.starred;
     const starBtn = document.getElementById('contentStarBtn');
 
@@ -325,10 +312,8 @@ function downloadAttachments() {
 }
 
 // Refresh email list
-function refreshEmailList() {
-    const searchValue = document.getElementById('searchInput').value;
+async function refreshEmailList() {
     currentFilter = 'all';
-    renderEmailList(searchValue);
 
     // Add visual feedback
     const refreshBtn = document.getElementById('refreshBtn');
@@ -337,53 +322,40 @@ function refreshEmailList() {
         refreshBtn.style.transform = 'rotate(0deg)';
     }, 500);
 
-    showNotification('E-maillijst vernieuwd!', 'success');
+    await syncEmails(false);
+    await loadEmails();
 }
 
 // Archive email
-function archiveEmail() {
+async function archiveEmail() {
     if (!currentEmail) {
         showNotification('Selecteer eerst een e-mail om te archiveren', 'warning');
         return;
     }
 
-    currentEmail.archived = !currentEmail.archived;
+    if (!(await emailAction(currentEmail, 'archive'))) return;
+    const wasArchived = currentEmail.archived;
+    await loadEmails();
 
-    // Move to archived folder if being archived
-    if (currentEmail.archived) {
-        currentEmail.folder = 'archived';
-    } else {
-        // Move back to inbox if being unarchived
-        currentEmail.folder = 'inbox';
-    }
-
-    const status = currentEmail.archived ? 'gearchiveerd' : 'gedearchiveerd';
-    showNotification(`E-mail is ${status}`, 'info');
-
-    // Refresh the list
-    renderEmailList(document.getElementById('searchInput').value);
+    showNotification(`E-mail is ${wasArchived ? 'gedearchiveerd' : 'gearchiveerd'}`, 'info');
 }
 
 // Delete email
-function deleteEmail() {
+async function deleteEmail() {
     if (!currentEmail) {
         showNotification('Selecteer eerst een e-mail om te verwijderen', 'warning');
         return;
     }
 
-    const index = emails.findIndex(e => e.id === currentEmail.id);
-    if (index > -1) {
-        emails.splice(index, 1);
-        currentEmail = null;
+    if (!(await emailAction(currentEmail, 'delete'))) return;
+    currentEmail = null;
 
-        // Reset content display
-        document.getElementById('emailSubject').textContent = 'Selecteer een e-mail';
-        document.getElementById('emailContent').innerHTML = '<p>De inhoud van de geselecteerde mail</p>';
+    // Reset content display
+    document.getElementById('emailSubject').textContent = 'Selecteer een e-mail';
+    document.getElementById('emailContent').innerHTML = '<p>De inhoud van de geselecteerde mail</p>';
 
-        // Refresh the list
-        renderEmailList(document.getElementById('searchInput').value);
-        showNotification('E-mail verwijderd', 'success');
-    }
+    await loadEmails();
+    showNotification('E-mail verwijderd', 'success');
 }
 
 // Setup logout functionality (now handled in dropdown)
@@ -490,13 +462,6 @@ function setupProfileDropdown() {
         });
     }
 
-    // Settings action (placeholder)
-    if (settingsItem) {
-        settingsItem.addEventListener('click', (e) => {
-            e.preventDefault();
-            showNotification('Instellingen pagina komt soon', 'info');
-        });
-    }
 }
 
 // Notification System
@@ -621,76 +586,27 @@ function setupNewEmailModal() {
             e.preventDefault();
 
             const to = document.getElementById('emailTo').value;
-            const subject = document.getElementById('emailSubject').value;
-            const content = document.getElementById('emailContent').value;
+            const subject = document.getElementById('newEmailSubject').value;
+            const content = document.getElementById('newEmailContent').value;
 
-            // Get user's SMTP credentials from storage
-            const userEmail = localStorage.getItem('user_smtp_email');
-            const userPassword = localStorage.getItem('user_smtp_password');
-            const smtpServer = localStorage.getItem('user_smtp_server') || 'smtp.gmail.com';
-            const smtpPort = localStorage.getItem('user_smtp_port') || '465';
-
-            if (!userEmail || !userPassword) {
-                showNotification('Stel eerst je email instellingen in bij Instellingen', 'warning');
-                modal.classList.remove('active');
-                return;
-            }
-
-            // Send to Python email server
             try {
-                const response = await fetch('http://localhost:5001', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        email: userEmail,
-                        password: userPassword,
-                        receiver: to,
-                        subject: subject,
-                        message: content,
-                        smtp_server: smtpServer,
-                        smtp_port: smtpPort
-                    })
-                });
+                const data = await postJson('api_send.php', { to: to, subject: subject, message: content });
 
-                const text = await response.text();
-
-                if (text.includes('Email succesvol verzonden')) {
-                    // Add to local list
-                    const newEmail = {
-                        id: emails.length + 1,
-                        subject: subject,
-                        from: userEmail,
-                        to: to,
-                        content: content,
-                        starred: false,
-                        important: false,
-                        archived: false,
-                        hasAttachments: false,
-                        attachments: [],
-                        folder: "sent"
-                    };
-
-                    emails.unshift(newEmail);
+                if (data.success) {
                     modal.classList.remove('active');
                     showNotification('E-mail verzonden naar ' + to, 'success');
 
                     // Switch to sent folder
                     currentFolder = 'sent';
                     currentFilter = 'all';
-                    const folderItems = document.querySelectorAll('.folder-item');
-                    folderItems.forEach(item => {
-                        item.classList.remove('active');
-                        if (item.dataset.folder === 'sent') {
-                            item.classList.add('active');
-                        }
+                    document.querySelectorAll('.folder-item').forEach(item => {
+                        item.classList.toggle('active', item.dataset.folder === 'sent');
                     });
                     document.getElementById('currentFolderName').textContent = 'Verzonden';
 
-                    renderEmailList(document.getElementById('searchInput').value);
+                    await loadEmails();
                 } else {
-                    showNotification('Email verzenden mislukt - controleer je credentials in instellingen', 'error');
+                    showNotification(data.message || 'Email verzenden mislukt', 'error');
                 }
             } catch (error) {
                 showNotification('Fout bij verzenden: ' + error, 'error');
@@ -718,24 +634,17 @@ function setupSettingsModal() {
     if (settingsItem) {
         settingsItem.addEventListener('click', (e) => {
             e.preventDefault();
-            // Load existing settings
             const user = getCurrentUser();
-            const savedEmail = localStorage.getItem('user_smtp_email');
-            const savedServer = localStorage.getItem('user_smtp_server');
-            const savedPort = localStorage.getItem('user_smtp_port');
-
-            if (user && user.email) {
-                document.getElementById('settingEmail').value = user.email;
-            }
-            if (savedEmail) {
-                document.getElementById('settingEmail').value = savedEmail;
-            }
-            if (savedServer) {
-                document.getElementById('settingSmtpServer').value = savedServer;
-            }
-            if (savedPort) {
-                document.getElementById('settingSmtpPort').value = savedPort;
-            }
+            document.getElementById('settingEmail').value = user && user.email ? user.email : '';
+            document.getElementById('settingPassword').value = '';
+            fetch('api_gmail.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('settingEmail').value = data.gmail_address;
+                    }
+                })
+                .catch(() => {});
 
             modal.classList.add('active');
         });
@@ -766,22 +675,25 @@ function setupSettingsModal() {
 
     // Handle form submission
     if (settingsForm) {
-        settingsForm.addEventListener('submit', (e) => {
+        settingsForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const email = document.getElementById('settingEmail').value;
-            const password = document.getElementById('settingPassword').value;
-            const smtpServer = document.getElementById('settingSmtpServer').value;
-            const smtpPort = document.getElementById('settingSmtpPort').value;
+            const gmailAddress = document.getElementById('settingEmail').value;
+            const appPassword = document.getElementById('settingPassword').value;
 
-            // Save to localStorage
-            localStorage.setItem('user_smtp_email', email);
-            localStorage.setItem('user_smtp_password', password);
-            localStorage.setItem('user_smtp_server', smtpServer);
-            localStorage.setItem('user_smtp_port', smtpPort);
-
-            modal.classList.remove('active');
-            showNotification('Email instellingen opgeslagen', 'success');
+            try {
+                const data = await postJson('api_gmail.php', { gmail_address: gmailAddress, app_password: appPassword });
+                if (!data.success) {
+                    showNotification(data.message || 'Opslaan mislukt', 'error');
+                    return;
+                }
+                modal.classList.remove('active');
+                showNotification('Gmail gekoppeld, mails worden opgehaald...', 'success');
+                await syncEmails(false);
+                await loadEmails();
+            } catch (error) {
+                showNotification('Opslaan mislukt', 'error');
+            }
         });
     }
 

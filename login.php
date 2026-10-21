@@ -1,3 +1,8 @@
+<?php
+session_start();
+$login_error = $_SESSION['login_error'] ?? '';
+unset($_SESSION['login_error']);
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -13,6 +18,10 @@
         <div class="auth-box">
             
             <form class="auth-form" action="loginCM.php" method="post">
+
+                <?php if ($login_error): ?>
+                    <p class="login-error" style="color: #d93025; margin-bottom: 15px;"><?= htmlspecialchars($login_error) ?></p>
+                <?php endif; ?>
 
                 <div class="form-group">
 
