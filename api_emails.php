@@ -1,55 +1,29 @@
 <?php
 header('Content-Type: application/json');
+require_once 'auth_check.php';
 require_once 'database.php';
 
+if (!$conn) {
+    echo json_encode(['success' => false, 'message' => 'Database connectie mislukt']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (!$conn) {
-        echo json_encode(['success' => false, 'message' => 'Database connectie mislukt']);
-        exit;
-    }
-
-    $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
-    $folder = isset($_GET['folder']) ? mysqli_real_escape_string($conn, $_GET['folder']) : 'inbox';
-    $filter = isset($_GET['filter']) ? mysqli_real_escape_string($conn, $_GET['filter']) : 'all';
-
-    if ($user_id === 0) {
-        echo json_encode(['success' => false, 'message' => 'Ongeldige user ID']);
-        exit;
-    }
-
-    // Build query
-    $query = "SELECT id, gmail_message_id, subject, sender, sender_email, body,
-                     received_date, folder, starred, important, archived,
-                     has_attachments, attachments
-              FROM emails
-              WHERE user_id = $user_id";
-
-    // Apply folder filter
-    $query .= " AND folder = '$folder'";
-
-    // Apply category filter
-    if ($filter === 'important') {
-        $query .= " AND important = TRUE";
-    } elseif ($filter === 'starred') {
-        $query .= " AND starred = TRUE";
-    } elseif ($filter === 'archived') {
-        $query .= " AND archived = TRUE";
-    }
-
-    // Order by received date (newest first)
-    $query .= " ORDER BY received_date DESC";
-
-    $result = mysqli_query($conn, $query);
-
-    if (!$result) {
-        echo json_encode(['success' => false, 'message' => 'Query mislukt: ' . mysqli_error($conn)]);
-        exit;
-    }
+    // Alleen de mails van de ingelogde gebruiker
+    $stmt = mysqli_prepare($conn, "SELECT id, gmail_message_id, subject, sender, sender_email, body,
+                                          received_date, folder, starred, important, archived,
+                                          has_attachments, attachments
+                                   FROM emails
+                                   WHERE user_id = ? AND deleted = FALSE
+                                   ORDER BY received_date DESC");
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
 
     $emails = [];
     while ($row = mysqli_fetch_assoc($result)) {
         $emails[] = [
-            'id' => $row['id'],
+            'id' => (int)$row['id'],
             'gmail_message_id' => $row['gmail_message_id'],
             'subject' => $row['subject'],
             'from' => $row['sender'],
@@ -67,44 +41,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     echo json_encode(['success' => true, 'emails' => $emails]);
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Update email status (star, archive, etc.)
-    if (!$conn) {
-        echo json_encode(['success' => false, 'message' => 'Database connectie mislukt']);
-        exit;
-    }
-
+    // Status van een mail aanpassen (ster, archief, verwijderen)
     $data = json_decode(file_get_contents('php://input'), true);
 
     $email_id = isset($data['email_id']) ? intval($data['email_id']) : 0;
-    $action = isset($data['action']) ? $data['action'] : '';
+    $action = $data['action'] ?? '';
 
-    if ($email_id === 0 || empty($action)) {
+    $queries = [
+        'star' => "UPDATE emails SET starred = NOT starred WHERE id = ? AND user_id = ?",
+        'important' => "UPDATE emails SET important = NOT important WHERE id = ? AND user_id = ?",
+        // folder eerst, want MySQL gebruikt in de rest van SET al de nieuwe waarde van archived
+        'archive' => "UPDATE emails SET folder = IF(archived, 'inbox', 'archived'), archived = NOT archived WHERE id = ? AND user_id = ?",
+        // niet echt verwijderen, anders komt de mail bij de volgende sync terug
+        'delete' => "UPDATE emails SET deleted = TRUE WHERE id = ? AND user_id = ?",
+    ];
+
+    if ($email_id === 0 || !isset($queries[$action])) {
         echo json_encode(['success' => false, 'message' => 'Ongeldige parameters']);
         exit;
     }
 
-    switch ($action) {
-        case 'star':
-            $query = "UPDATE emails SET starred = NOT starred WHERE id = $email_id";
-            break;
-        case 'important':
-            $query = "UPDATE emails SET important = NOT important WHERE id = $email_id";
-            break;
-        case 'archive':
-            $query = "UPDATE emails SET archived = NOT archived, folder = IF(archived = FALSE, 'archived', 'inbox') WHERE id = $email_id";
-            break;
-        case 'delete':
-            $query = "DELETE FROM emails WHERE id = $email_id";
-            break;
-        default:
-            echo json_encode(['success' => false, 'message' => 'Ongeldige actie']);
-            exit;
-    }
+    $stmt = mysqli_prepare($conn, $queries[$action]);
+    mysqli_stmt_bind_param($stmt, "ii", $email_id, $user_id);
+    mysqli_stmt_execute($stmt);
 
-    if (mysqli_query($conn, $query)) {
+    if (mysqli_stmt_affected_rows($stmt) > 0) {
         echo json_encode(['success' => true, 'message' => 'Email bijgewerkt']);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Bijwerken mislukt: ' . mysqli_error($conn)]);
+        echo json_encode(['success' => false, 'message' => 'E-mail niet gevonden']);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Ongeldige request methode']);

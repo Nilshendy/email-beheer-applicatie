@@ -6,7 +6,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 import os
 
-def send_email(sender_email, receiver_email, subject, message, password, smtp_server='smtp.gmail.com', smtp_port=465, attachments=None):
+def send_email(sender_email, receiver_email, subject, message, password, smtp_server='smtp.gmail.com', smtp_port=465, attachments=None, message_id=None):
     """
     Send an email with optional attachments
 
@@ -19,6 +19,7 @@ def send_email(sender_email, receiver_email, subject, message, password, smtp_se
         smtp_server: SMTP server address (default: smtp.gmail.com)
         smtp_port: SMTP port (default: 465 for SSL)
         attachments: List of file paths to attach (optional)
+        message_id: Message-ID header to use (optional)
 
     Returns:
         bool: True if successful, False otherwise
@@ -29,6 +30,8 @@ def send_email(sender_email, receiver_email, subject, message, password, smtp_se
         msg['From'] = sender_email
         msg['To'] = receiver_email
         msg['Subject'] = subject
+        if message_id:
+            msg['Message-ID'] = message_id
 
         # Attach message body
         msg.attach(MIMEText(message, 'plain'))

@@ -1,78 +1,47 @@
 <?php
 header('Content-Type: application/json');
+require_once 'auth_check.php';
 require_once 'database.php';
 
+if (!$conn) {
+    echo json_encode(['success' => false, 'message' => 'Database connectie mislukt']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!$conn) {
-        echo json_encode(['success' => false, 'message' => 'Database connectie mislukt']);
-        exit;
-    }
-
     $data = json_decode(file_get_contents('php://input'), true);
+    $gmail_address = trim($data['gmail_address'] ?? '');
+    $app_password = str_replace(' ', '', $data['app_password'] ?? '');
 
-    $user_id = isset($data['user_id']) ? intval($data['user_id']) : 0;
-    $gmail_address = mysqli_real_escape_string($conn, $data['gmail_address']);
-    $app_password = mysqli_real_escape_string($conn, $data['app_password']);
-
-    if ($user_id === 0) {
-        echo json_encode(['success' => false, 'message' => 'Ongeldige user ID']);
+    if (!filter_var($gmail_address, FILTER_VALIDATE_EMAIL) || $app_password === '') {
+        echo json_encode(['success' => false, 'message' => 'Vul een geldig e-mailadres en App Password in']);
         exit;
     }
 
-    // Check if user exists
-    $check_user = "SELECT id FROM users WHERE id = $user_id";
-    $user_result = mysqli_query($conn, $check_user);
+    // Eén Gmail-koppeling per gebruiker: bestaande vervangen
+    $stmt = mysqli_prepare($conn, "DELETE FROM gmail_credentials WHERE user_id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
 
-    if (mysqli_num_rows($user_result) === 0) {
-        echo json_encode(['success' => false, 'message' => 'Gebruiker niet gevonden']);
-        exit;
-    }
+    $stmt = mysqli_prepare($conn, "INSERT INTO gmail_credentials (user_id, gmail_address, app_password) VALUES (?, ?, ?)");
+    mysqli_stmt_bind_param($stmt, "iss", $user_id, $gmail_address, $app_password);
 
-    // Check if credentials already exist
-    $check_credentials = "SELECT id FROM gmail_credentials WHERE user_id = $user_id";
-    $cred_result = mysqli_query($conn, $check_credentials);
-
-    if (mysqli_num_rows($cred_result) > 0) {
-        // Update existing credentials
-        $update_query = "UPDATE gmail_credentials SET gmail_address = '$gmail_address', app_password = '$app_password' WHERE user_id = $user_id";
-
-        if (mysqli_query($conn, $update_query)) {
-            echo json_encode(['success' => true, 'message' => 'Gmail credentials bijgewerkt']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Bijwerken mislukt: ' . mysqli_error($conn)]);
-        }
+    if (mysqli_stmt_execute($stmt)) {
+        echo json_encode(['success' => true, 'message' => 'Gmail gegevens opgeslagen']);
     } else {
-        // Insert new credentials
-        $insert_query = "INSERT INTO gmail_credentials (user_id, gmail_address, app_password) VALUES ($user_id, '$gmail_address', '$app_password')";
-
-        if (mysqli_query($conn, $insert_query)) {
-            echo json_encode(['success' => true, 'message' => 'Gmail credentials opgeslagen']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Opslaan mislukt: ' . mysqli_error($conn)]);
-        }
+        echo json_encode(['success' => false, 'message' => 'Opslaan mislukt']);
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Get Gmail credentials for a user
-    if (!$conn) {
-        echo json_encode(['success' => false, 'message' => 'Database connectie mislukt']);
-        exit;
-    }
+    $stmt = mysqli_prepare($conn, "SELECT gmail_address FROM gmail_credentials WHERE user_id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $user_id);
+    mysqli_stmt_execute($stmt);
+    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
 
-    $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
-
-    if ($user_id === 0) {
-        echo json_encode(['success' => false, 'message' => 'Ongeldige user ID']);
-        exit;
-    }
-
-    $query = "SELECT gmail_address FROM gmail_credentials WHERE user_id = $user_id";
-    $result = mysqli_query($conn, $query);
-
-    if (mysqli_num_rows($result) > 0) {
-        $row = mysqli_fetch_assoc($result);
+    if ($row) {
         echo json_encode(['success' => true, 'gmail_address' => $row['gmail_address']]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Geen Gmail credentials gevonden']);
+        echo json_encode(['success' => false, 'message' => 'Geen Gmail gegevens gevonden']);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Ongeldige request methode']);

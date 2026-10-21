@@ -1,6 +1,6 @@
 <?php
 session_start();
-if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
+if (empty($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
 }
@@ -30,21 +30,16 @@ if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
                 </div>
                 <div class="modal-body">
                     <form class="email-form" id="settingsForm">
+                        <p class="settings-info">Koppel je Gmail om je eigen mails te zien en te versturen. Gebruik een
+                            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">App Password</a>
+                            (niet je normale wachtwoord).</p>
                         <div class="form-group">
-                            <label for="settingEmail">Jouw Email:</label>
-                            <input type="email" id="settingEmail" name="email" required placeholder="your@nix.com">
+                            <label for="settingEmail">Gmail adres:</label>
+                            <input type="email" id="settingEmail" name="email" required placeholder="jij@gmail.com">
                         </div>
                         <div class="form-group">
-                            <label for="settingPassword">Wachtwoord:</label>
-                            <input type="password" id="settingPassword" name="password" required placeholder="Je wachtwoord">
-                        </div>
-                        <div class="form-group">
-                            <label for="settingSmtpServer">SMTP Server:</label>
-                            <input type="text" id="settingSmtpServer" name="smtp_server" placeholder="smtp.gmail.com" value="smtp.gmail.com">
-                        </div>
-                        <div class="form-group">
-                            <label for="settingSmtpPort">SMTP Poort:</label>
-                            <input type="number" id="settingSmtpPort" name="smtp_port" placeholder="465" value="465">
+                            <label for="settingPassword">Gmail App Password:</label>
+                            <input type="password" id="settingPassword" name="password" required placeholder="16 tekens" autocomplete="new-password">
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" id="cancelSettings">Annuleren</button>
@@ -71,12 +66,12 @@ if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
                             <input type="email" id="emailTo" name="to" required placeholder="ontvanger@voorbeeld.com">
                         </div>
                         <div class="form-group">
-                            <label for="emailSubject">Onderwerp:</label>
-                            <input type="text" id="emailSubject" name="subject" required placeholder="Onderwerp van de e-mail">
+                            <label for="newEmailSubject">Onderwerp:</label>
+                            <input type="text" id="newEmailSubject" name="subject" required placeholder="Onderwerp van de e-mail">
                         </div>
                         <div class="form-group">
-                            <label for="emailContent">Inhoud:</label>
-                            <textarea id="emailContent" name="content" required placeholder="Typ uw bericht hier..." rows="10"></textarea>
+                            <label for="newEmailContent">Inhoud:</label>
+                            <textarea id="newEmailContent" name="content" required placeholder="Typ uw bericht hier..." rows="10"></textarea>
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" id="cancelEmail">Annuleren</button>
@@ -112,7 +107,7 @@ if (!isset($_SESSION['login']) || $_SESSION['login'] !== true) {
                                 <i class="fas fa-user"></i>
                             </div>
                             <div class="user-info">
-                                <span class="user-email" id="userEmail">user@example.com</span>
+                                <span class="user-email" id="userEmail"><?= htmlspecialchars($_SESSION['user_email'] ?? '') ?></span>
                             </div>
                         </div>
                         <div class="dropdown-divider"></div>
