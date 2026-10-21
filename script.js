@@ -55,10 +55,13 @@ async function loadEmails() {
         const data = await response.json();
         if (data.success) {
             emails = data.emails;
-            if (currentEmail) {
-                currentEmail = emails.find(e => e.id === currentEmail.id) || null;
-            }
             renderEmailList(document.getElementById('searchInput').value);
+            const selected = currentEmail && emails.find(e => e.id === currentEmail.id);
+            if (selected) {
+                selectEmail(selected);
+            } else {
+                clearSelectedEmail();
+            }
         } else {
             showNotification(data.message || 'E-mails laden mislukt', 'error');
         }
@@ -144,6 +147,16 @@ function renderEmailList(filter = '') {
         emailItem.addEventListener('click', () => selectEmail(email));
         emailList.appendChild(emailItem);
     });
+}
+
+function clearSelectedEmail() {
+    currentEmail = null;
+    document.querySelectorAll('.email-item').forEach(item => item.classList.remove('active'));
+    document.getElementById('emailSubject').textContent = 'Selecteer een e-mail';
+    document.getElementById('emailContent').innerHTML = '<p>De inhoud van de geselecteerde mail</p>';
+    const starBtn = document.getElementById('contentStarBtn');
+    starBtn.innerHTML = '<i class="far fa-star"></i>';
+    starBtn.classList.remove('active');
 }
 
 // Select an email and display its content
@@ -239,18 +252,8 @@ async function toggleStar() {
 
     if (!(await emailAction(currentEmail, 'star'))) return;
     currentEmail.starred = !currentEmail.starred;
-    const starBtn = document.getElementById('contentStarBtn');
-
-    if (currentEmail.starred) {
-        starBtn.innerHTML = '<i class="fas fa-star"></i>';
-        starBtn.classList.add('active');
-    } else {
-        starBtn.innerHTML = '<i class="far fa-star"></i>';
-        starBtn.classList.remove('active');
-    }
-
-    // Refresh the list to show updated star status
     renderEmailList(document.getElementById('searchInput').value);
+    selectEmail(currentEmail);
 }
 
 // Toggle star status from toolbar
@@ -348,12 +351,7 @@ async function deleteEmail() {
     }
 
     if (!(await emailAction(currentEmail, 'delete'))) return;
-    currentEmail = null;
-
-    // Reset content display
-    document.getElementById('emailSubject').textContent = 'Selecteer een e-mail';
-    document.getElementById('emailContent').innerHTML = '<p>De inhoud van de geselecteerde mail</p>';
-
+    clearSelectedEmail();
     await loadEmails();
     showNotification('E-mail verwijderd', 'success');
 }
@@ -536,6 +534,7 @@ function setupFolderDropdown() {
 
             // Reset filter and refresh list
             currentFilter = 'all';
+            clearSelectedEmail();
             renderEmailList(document.getElementById('searchInput').value);
 
             // Show notification
@@ -603,6 +602,7 @@ function setupNewEmailModal() {
                         item.classList.toggle('active', item.dataset.folder === 'sent');
                     });
                     document.getElementById('currentFolderName').textContent = 'Verzonden';
+                    clearSelectedEmail();
 
                     await loadEmails();
                 } else {
